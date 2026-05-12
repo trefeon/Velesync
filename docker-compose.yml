@@ -1,10 +1,30 @@
 version: '3.8'
 
 services:
-  iot-platform:
-    build: .
+  backend:
+    build:
+      context: ./backend
     ports:
-      - "5000:5000"
+      - "8000:8000"
+    depends_on:
+      - mqtt-broker
+    environment:
+      - MQTT_BROKER=mqtt-broker
+      - DATABASE_URL=sqlite:///./data/velesync.db
     volumes:
-      - .:/app
-    restart: unless-stopped
+      - ./backend/data:/app/data
+
+  mqtt-broker:
+    image: eclipse-mosquitto:2.1.2
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./infra/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  frontend:
+    image: nginx:1.27.0-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html

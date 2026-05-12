@@ -2,20 +2,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
-
-// ====== CONFIGURATION ======
-// TODO: Update these with your actual credentials
-const char* WIFI_SSID = "YOUR_WIFI_NETWORK_NAME";     
-const char* WIFI_PASS = "YOUR_WIFI_PASSWORD";         
-const char* MQTT_HOST = "192.168.1.100";  // Your Ubuntu server IP
-const int   MQTT_PORT = 1883;
-const char* DEVICE_ID = "esp32-portfolio-demo";
-
-// Pin Configuration
-#define DHT_PIN 4
-#define DHT_TYPE DHT22
-#define LED_PIN 2
-#define LIGHT_SENSOR_PIN 34  // Analog pin for LDR
+#include "config.h"
 
 // Initialize sensors
 DHT dht(DHT_PIN, DHT_TYPE);
@@ -25,46 +12,26 @@ PubSubClient mqtt(espClient);
 // Timing variables
 unsigned long lastSensorRead = 0;
 unsigned long lastMqttReconnect = 0;
-const unsigned long SENSOR_INTERVAL = 10000;  // Read sensors every 10 seconds
-const unsigned long MQTT_RECONNECT_INTERVAL = 5000;
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("\n🌟 Simple IoT Platform - ESP32 Demo");
+  Serial.println("\n🌌 Velesync Node - Active");
   
-  // Initialize pins
   pinMode(LED_PIN, OUTPUT);
   pinMode(LIGHT_SENSOR_PIN, INPUT);
-  
-  // Initialize DHT sensor
   dht.begin();
   
-  // Connect to WiFi
   connectWiFi();
-  
-  // Setup MQTT
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqttMessage);
   
   Serial.println("✅ Setup complete!");
   Serial.printf("📡 Device ID: %s\n", DEVICE_ID);
-  
-  // Initial LED blink to show it's working
-  for(int i = 0; i < 3; i++) {
-    digitalWrite(LED_PIN, HIGH);
-    delay(200);
-    digitalWrite(LED_PIN, LOW);
-    delay(200);
-  }
 }
 
 void loop() {
-  // Maintain WiFi connection
-  if(WiFi.status() != WL_CONNECTED) {
-    connectWiFi();
-  }
+  if(WiFi.status() != WL_CONNECTED) connectWiFi();
   
-  // Maintain MQTT connection
   if(!mqtt.connected() && millis() - lastMqttReconnect > MQTT_RECONNECT_INTERVAL) {
     connectMqtt();
     lastMqttReconnect = millis();
@@ -72,12 +39,10 @@ void loop() {
   
   mqtt.loop();
   
-  // Read and send sensor data
   if(millis() - lastSensorRead > SENSOR_INTERVAL) {
     readAndSendSensorData();
     lastSensorRead = millis();
   }
-  
   delay(100);
 }
 
@@ -94,15 +59,6 @@ void connectWiFi() {
   
   if(WiFi.status() == WL_CONNECTED) {
     Serial.println("\n✅ WiFi connected!");
-    Serial.printf("📍 IP address: %s\n", WiFi.localIP().toString().c_str());
-    
-    // Blink LED to indicate WiFi connection
-    for(int i = 0; i < 5; i++) {
-      digitalWrite(LED_PIN, HIGH);
-      delay(100);
-      digitalWrite(LED_PIN, LOW);
-      delay(100);
-    }
   } else {
     Serial.println("\n❌ WiFi connection failed!");
   }
@@ -111,26 +67,15 @@ void connectWiFi() {
 void connectMqtt() {
   if(WiFi.status() != WL_CONNECTED) return;
   
-  Serial.printf("🔗 Connecting to MQTT broker: %s:%d", MQTT_HOST, MQTT_PORT);
+  Serial.printf("🔗 Connecting to MQTT: %s:%d", MQTT_HOST, MQTT_PORT);
   
   if(mqtt.connect(DEVICE_ID)) {
     Serial.println("\n✅ MQTT connected!");
-    
-    // Subscribe to device-specific commands
     String commandTopic = "sensors/" + String(DEVICE_ID) + "/commands";
     mqtt.subscribe(commandTopic.c_str());
-    Serial.printf("📬 Subscribed to: %s\n", commandTopic.c_str());
-    
-    // Send online status
     sendDeviceStatus(true);
-    
-    // LED indicator for MQTT connection
-    digitalWrite(LED_PIN, HIGH);
-    delay(1000);
-    digitalWrite(LED_PIN, LOW);
-    
   } else {
-    Serial.printf("\n❌ MQTT connection failed! Error code: %d\n", mqtt.state());
+    Serial.printf("\n❌ MQTT failed, rc=%d\n", mqtt.state());
   }
 }
 
