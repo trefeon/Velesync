@@ -1,9 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Column, Integer, Float, String, DateTime, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import paho.mqtt.client as mqtt
+import uvicorn
 import json
 import datetime
 import threading
@@ -29,6 +31,10 @@ class SensorReading(Base):
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
+
+class DeviceCommand(BaseModel):
+    device_id: str
+    command: str
 
 # FastAPI Setup
 app = FastAPI(title="Velesync API")
@@ -98,6 +104,17 @@ def get_history(limit: int = 50):
     history = db.query(SensorReading).order_by(SensorReading.timestamp.desc()).limit(limit).all()
     db.close()
     return history
+
+@app.post("/api/command")
+def send_command(cmd: DeviceCommand):
+    try:
+        topic = f"sensors/{cmd.device_id}/commands"
+        payload = json.dumps({"command": cmd.command})
+        info = mqtt_client.publish(topic, payload)
+        info.wait_for_publish()
+        return {"status": "dispatched", "device": cmd.device_id, "command": cmd.command}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

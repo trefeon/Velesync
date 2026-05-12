@@ -65,6 +65,22 @@ pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
+### 3. Neural Simulation (Demo)
+To instantly visualize the platform's capabilities without hardware:
+
+**Option A: Browser Demo (No Setup)**
+1. Open the dashboard at [http://localhost:80](http://localhost:80).
+2. Click **"START DEMO MODE"** in the top navbar.
+3. Observe real-time neural data generation and visualization.
+
+**Option B: System-Wide Simulation (Full Stack Test)**
+1. Ensure the stack is running via Docker.
+2. Run the Python simulator:
+   ```bash
+   python scripts/simulate_device.py
+   ```
+3. This will broadcast live telemetry across the MQTT bridge, populating the real database and dashboard.
+
 ---
 
 ## 📡 Hardware Integration (Firmware)
