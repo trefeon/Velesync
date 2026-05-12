@@ -105,6 +105,16 @@ def get_history(limit: int = 50):
     db.close()
     return history
 
+@app.post("/api/telemetry")
+def post_telemetry(reading: SensorReadingCreate):
+    db = SessionLocal()
+    db_reading = SensorReading(**reading.dict())
+    db.add(db_reading)
+    db.commit()
+    db.refresh(db_reading)
+    db.close()
+    return {"status": "persisted", "data": reading}
+
 @app.post("/api/command")
 def send_command(cmd: DeviceCommand):
     try:
